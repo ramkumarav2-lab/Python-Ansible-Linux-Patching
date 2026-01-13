@@ -1,0 +1,47 @@
+---
+- name: Patch Rollback - Kernel Revert
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: List installed kernels
+      command: grubby --info=ALL
+      register: kernel_list
+
+    - name: Display installed kernels
+      debug:
+        msg: "{{ kernel_list.stdout_lines }}"
+
+    - name: Get current default kernel
+      command: grubby --default-kernel
+      register: current_kernel
+
+    - name: Display current default kernel
+      debug:
+        msg: "Current default kernel: {{ current_kernel.stdout }}"
+
+    - name: Set previous kernel as default
+      shell: |
+        PREV_KERNEL=$(grubby --info=ALL | grep kernel= | sed '1d' | head -1 | cut -d= -f2)
+        grubby --set-default "$PREV_KERNEL"
+      register: rollback_kernel
+
+    - name: Confirm rollback kernel set
+      debug:
+        msg: "Rollback kernel configured successfully"
+
+    - name: Ask for reboot confirmation
+      pause:
+        prompt: "Kernel rollback configured. Reboot now to apply? (yes/no)"
+      register: reboot_choice
+
+    - name: Reboot system
+      reboot:
+        reboot_timeout: 900
+      when: reboot_choice.user_input | lower == "yes"
+
+    - name: Wait for system to return
+      wait_for_connection:
+        timeout: 600
+      when: reboot_choice.user_input | lower == "yes"
