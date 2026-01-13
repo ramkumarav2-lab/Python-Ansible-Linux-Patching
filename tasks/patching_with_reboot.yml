@@ -1,0 +1,30 @@
+---
+- name: Linux Patching with Reboot
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update all packages
+      package:
+        name: "*"
+        state: latest
+      register: patch_result
+
+    - name: Check if reboot is required
+      shell: |
+        if [ -f /var/run/reboot-required ] || needs-restarting -r; then
+          echo "reboot"
+        else
+          echo "no"
+        fi
+      register: reboot_check
+      ignore_errors: yes
+
+    - name: Reboot system if required
+      reboot:
+        reboot_timeout: 900
+      when: reboot_check.stdout == "reboot"
+
+    - name: Wait for system to come back
+      wait_for_connection:
+        timeout: 600
