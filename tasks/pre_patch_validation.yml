@@ -1,0 +1,32 @@
+---
+- name: Pre-Patching Validation
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Capture uptime
+      command: uptime
+      register: uptime_out
+
+    - name: Display uptime
+      debug:
+        msg: "{{ uptime_out.stdout }}"
+
+    - name: Check running kernel
+      command: uname -r
+      register: kernel_version
+
+    - name: Display kernel version
+      debug:
+        msg: "Current Kernel: {{ kernel_version.stdout }}"
+
+    - name: Validate RedHat subscription (RHEL only)
+      command: subscription-manager status
+      register: sub_status
+      when: ansible_distribution == "RedHat"
+      ignore_errors: yes
+
+    - name: Show subscription status
+      debug:
+        msg: "{{ sub_status.stdout }}"
+      when: ansible_distribution == "RedHat"
