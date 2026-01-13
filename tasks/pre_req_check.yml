@@ -1,0 +1,31 @@
+---
+- name: Pre-requisite Checks
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Check OS support
+      fail:
+        msg: "Unsupported OS: {{ ansible_distribution }}"
+      when: ansible_distribution not in ["RedHat", "CentOS", "Rocky", "AlmaLinux"]
+
+    - name: Check root filesystem space
+      shell: df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
+      register: disk_usage
+
+    - name: Fail if disk usage > 80%
+      fail:
+        msg: "Root filesystem usage is above 80%"
+      when: disk_usage.stdout | int > 80
+
+    - name: Check yum/dnf lock
+      shell: |
+        if lsof /var/run/yum.pid >/dev/null 2>&1; then exit 1; else exit 0; fi
+      register: yum_lock
+      ignore_errors: yes
+
+    - name: Fail if yum lock exists
+      fail:
+        msg: "YUM/DNF lock detected"
+      when: yum_lock.rc != 0
