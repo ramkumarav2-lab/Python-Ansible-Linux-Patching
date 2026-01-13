@@ -1,0 +1,21 @@
+---
+- name: Download Patches Only
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Ensure yum-utils installed
+      package:
+        name: yum-utils
+        state: present
+
+    - name: Download all updates
+      command: >
+        yum update --downloadonly
+        --downloaddir=/var/tmp/patches
+      args:
+        warn: false
+
+    - name: Display download location
+      debug:
+        msg: "Patches downloaded to /var/tmp/patches"
